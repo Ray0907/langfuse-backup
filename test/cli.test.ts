@@ -18,4 +18,18 @@ describe("CLI", () => {
 		expect(text_help).toContain("verify");
 		expect(text_help).toContain("restore");
 	});
+
+	it("exposes read-only restore planning separately from restore execution", () => {
+		const program = createProgram({
+			write_output: () => undefined,
+			write_error: () => undefined,
+		});
+		const command_restore = program.commands.find((command) =>
+			command.name() === "restore");
+
+		expect(command_restore?.commands.map((command) => command.name())).toEqual([
+			"plan",
+			"run",
+		]);
+	});
 });

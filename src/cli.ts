@@ -1,5 +1,7 @@
 import { Command } from "commander";
 
+import { runRestorePlanFile } from "./commands/restorePlan.js";
+
 export interface CliIo {
 	write_output: (value_output: string) => void;
 	write_error: (value_error: string) => void;
@@ -50,7 +52,22 @@ export function createProgram(io_cli: CliIo = {
 	addPlaceholder(program, "inspect", "Inspect a committed recovery point");
 	addPlaceholder(program, "verify", "Verify recovery-point artifacts");
 	addPlaceholder(program, "prune", "Plan or confirm recovery-point retention");
-	addPlaceholder(program, "restore", "Plan or run an isolated restore");
+	const command_restore = program
+		.command("restore")
+		.description("Plan or run an isolated restore");
+	command_restore
+		.command("plan")
+		.description("Print a read-only restore plan")
+		.requiredOption("--request <path>", "Path to restore-plan evidence JSON")
+		.action(async (options_command: { request: string }) => {
+			io_cli.write_output(await runRestorePlanFile(options_command.request));
+		});
+	command_restore
+		.command("run")
+		.description("Run an explicitly confirmed restore")
+		.action(() => {
+			throw new CliError("NOT_IMPLEMENTED", "restore run is not implemented yet", 2);
+		});
 
 	return program;
 }
