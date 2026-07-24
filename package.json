@@ -1,0 +1,42 @@
+{
+	"name": "langfuse-backup",
+	"version": "0.1.0",
+	"description": "Standalone backup and restore CLI for self-hosted Langfuse",
+	"type": "module",
+	"license": "MIT",
+	"private": false,
+	"bin": {
+		"langfuse-backup": "dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
+	"scripts": {
+		"build": "tsup",
+		"lint": "eslint .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit",
+		"verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+	},
+	"engines": {
+		"node": ">=24"
+	},
+	"packageManager": "pnpm@11.0.0",
+	"dependencies": {
+		"commander": "^15.0.0",
+		"yaml": "^2.9.0",
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"@types/node": "^24.13.3",
+		"eslint": "^10.7.0",
+		"tsup": "^8.5.1",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.65.0",
+		"vitest": "^4.1.10"
+	}
+}
