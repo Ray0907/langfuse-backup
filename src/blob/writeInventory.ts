@@ -7,8 +7,6 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createGzip } from "node:zlib";
 
-import type { BlobInventoryEntry } from "./types.js";
-
 export interface CompressedInventoryMetadata {
 	object_count: number;
 	size_bytes: number;
@@ -16,7 +14,7 @@ export interface CompressedInventoryMetadata {
 }
 
 export async function withCompressedInventory<ResultUpload>(
-	entries_inventory: AsyncIterable<BlobInventoryEntry>,
+	entries_inventory: AsyncIterable<object>,
 	upload_file: (
 		path_file: string,
 		metadata_inventory: CompressedInventoryMetadata,
@@ -64,4 +62,3 @@ export async function withCompressedInventory<ResultUpload>(
 		await rm(path_temporary, { recursive: true, force: true });
 	}
 }
-
