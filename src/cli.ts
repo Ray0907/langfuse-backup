@@ -49,6 +49,7 @@ export function createProgram(io_cli: CliIo = {
 	addPlaceholder(program, "list", "List committed recovery points");
 	addPlaceholder(program, "inspect", "Inspect a committed recovery point");
 	addPlaceholder(program, "verify", "Verify recovery-point artifacts");
+	addPlaceholder(program, "prune", "Plan or confirm recovery-point retention");
 	addPlaceholder(program, "restore", "Plan or run an isolated restore");
 
 	return program;
