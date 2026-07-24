@@ -108,7 +108,8 @@ describe("foundation backup integration", () => {
 		});
 
 		const path_manifest = "deployments/integration/backups/backup-1/manifest.json";
-		const committed = readManifest((await destination.getObject(path_manifest)).toString("utf8"));
+		const data_manifest = await destination.getObject(path_manifest);
+		const committed = readManifest(data_manifest.toString("utf8"));
 		expect(committed.backup_id).toBe(result_backup.manifest.backup_id);
 		expect(committed.components.postgres.verified_at).toBe(timestamp);
 		expect(committed.components.clickhouse.status).toBe("BACKUP_CREATED");
