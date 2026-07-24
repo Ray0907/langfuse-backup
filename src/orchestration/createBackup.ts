@@ -1,4 +1,5 @@
 import type { BackupDestination } from "../destination/types.js";
+import type { QueueSnapshot } from "../adapters/redis/queueInspector.js";
 import type {
 	BlobReceipt,
 	ClickhouseReceipt,
@@ -13,23 +14,44 @@ import {
 } from "./backupLock.js";
 import { BackupState } from "./backupState.js";
 import { verifyBackupReceipts } from "./verifyBackup.js";
+import { waitForQueueDrain } from "./waitForQueueDrain.js";
 
 export type BackupStage =
 	| "lock"
 	| "preflight"
+	| "pre_hook"
+	| "drain"
+	| "boundary"
 	| "postgres"
 	| "clickhouse"
 	| "blob"
 	| "verify"
 	| "manifest"
+	| "post_hook"
 	| "unlock";
 
 export interface CreateBackupOptions {
 	destination: BackupDestination;
 	deployment_id: string;
 	backup_id: string;
+	consistency_mode?: "online" | "coordinated";
+	consistency?: {
+		mode: "online";
+	} | {
+		mode: "coordinated";
+		run_pre_hook: () => Promise<void>;
+		wait_for_queue_drain: () => Promise<QueueSnapshot>;
+		run_post_hook: () => Promise<void>;
+	};
 	allow_active_writes: boolean;
 	preflight: () => Promise<void>;
+	run_pre_hook?: () => Promise<void>;
+	run_post_hook?: () => Promise<void>;
+	inspect_queues?: () => Promise<QueueSnapshot>;
+	queue_drain_timeout_ms?: number;
+	queue_poll_interval_ms?: number;
+	queue_sleep?: (duration_ms: number) => Promise<void>;
+	queue_get_time_ms?: () => number;
 	backup_postgres: () => Promise<PostgresReceipt>;
 	backup_clickhouse: () => Promise<ClickhouseReceipt>;
 	backup_blob: () => Promise<BlobReceipt>;
@@ -62,14 +84,32 @@ async function reportStage(
 export async function createBackup(
 	options: CreateBackupOptions,
 ): Promise<CreateBackupResult> {
-	if (!options.allow_active_writes) {
+	const consistency_mode = options.consistency?.mode
+		?? options.consistency_mode
+		?? "online";
+	const consistency_coordinated = options.consistency?.mode === "coordinated"
+		? options.consistency
+		: undefined;
+	const run_pre_hook = consistency_coordinated?.run_pre_hook
+		?? options.run_pre_hook;
+	const run_post_hook = consistency_coordinated?.run_post_hook
+		?? options.run_post_hook;
+	if (consistency_mode === "online" && !options.allow_active_writes) {
 		throw new Error("Online backup requires --allow-active-writes");
+	}
+	if (consistency_mode === "coordinated"
+		&& (run_pre_hook === undefined
+			|| run_post_hook === undefined
+			|| (consistency_coordinated === undefined
+				&& options.inspect_queues === undefined))) {
+		throw new Error("Coordinated backup requires hooks and a queue inspector");
 	}
 
 	const get_now = options.now ?? (() => new Date());
 	const state_backup = new BackupState();
 	const created_at = get_now().toISOString();
 	let lock_backup: BackupLock | undefined;
+	let should_run_post_hook = false;
 
 	try {
 		lock_backup = await acquireBackupLock(
@@ -88,8 +128,41 @@ export async function createBackup(
 		await options.preflight();
 		state_backup.transition("preflight_passed");
 		await reportStage(options, "preflight");
-
-		const boundary_at = get_now().toISOString();
+		let boundary_at: string;
+		let queue_drained_at: string | undefined;
+		if (consistency_mode === "coordinated") {
+			should_run_post_hook = true;
+			await run_pre_hook?.();
+			await reportStage(options, "pre_hook");
+			const snapshot_drained = consistency_coordinated === undefined
+				? await waitForQueueDrain({
+					inspect: options.inspect_queues as () => Promise<QueueSnapshot>,
+					timeout_ms: options.queue_drain_timeout_ms ?? 300_000,
+					...(options.queue_poll_interval_ms === undefined
+						? {}
+						: { poll_interval_ms: options.queue_poll_interval_ms }),
+					...(options.queue_sleep === undefined
+						? {}
+						: { sleep: options.queue_sleep }),
+					...(options.queue_get_time_ms === undefined
+						? {}
+						: { get_time_ms: options.queue_get_time_ms }),
+				})
+				: await consistency_coordinated.wait_for_queue_drain();
+			if (snapshot_drained.pending_count !== 0
+				|| snapshot_drained.failed_count !== 0) {
+				throw new Error(
+					`Queue is not drained: ${snapshot_drained.pending_count} pending, `
+					+ `${snapshot_drained.failed_count} failed`,
+				);
+			}
+			queue_drained_at = snapshot_drained.captured_at;
+			await reportStage(options, "drain");
+			boundary_at = get_now().toISOString();
+			await reportStage(options, "boundary");
+		} else {
+			boundary_at = get_now().toISOString();
+		}
 		state_backup.transition("quiesced");
 
 		const receipt_postgres = await options.backup_postgres();
@@ -127,8 +200,9 @@ export async function createBackup(
 				source_revision: options.source_revision,
 			},
 			consistency: {
-				mode: "online" as const,
+				mode: consistency_mode,
 				boundary_at,
+				...(queue_drained_at === undefined ? {} : { queue_drained_at }),
 			},
 			components: receipts_verified,
 			required_secrets: [...options.required_secrets].sort(),
@@ -158,9 +232,16 @@ export async function createBackup(
 			manifest_sha256: manifest_serialized.sha256,
 		};
 	} finally {
-		if (lock_backup !== undefined) {
-			await releaseBackupLock(options.destination, lock_backup);
-			await reportStage(options, "unlock");
+		try {
+			if (should_run_post_hook) {
+				await run_post_hook?.();
+				await reportStage(options, "post_hook");
+			}
+		} finally {
+			if (lock_backup !== undefined) {
+				await releaseBackupLock(options.destination, lock_backup);
+				await reportStage(options, "unlock");
+			}
 		}
 	}
 }

@@ -49,7 +49,16 @@ export const ManifestSchema = z.object({
 		mode: z.enum(["coordinated", "online"]),
 		boundary_at: TimestampSchema,
 		queue_drained_at: TimestampSchema.optional(),
-	}).passthrough(),
+	}).passthrough().superRefine((value_consistency, context) => {
+		if (value_consistency.mode === "coordinated"
+			&& value_consistency.queue_drained_at === undefined) {
+			context.addIssue({
+				code: "custom",
+				path: ["queue_drained_at"],
+				message: "Coordinated manifests require queue_drained_at",
+			});
+		}
+	}),
 	components: z.object({
 		postgres: PostgresReceiptSchema,
 		clickhouse: ClickhouseReceiptSchema,
