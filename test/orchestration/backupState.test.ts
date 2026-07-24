@@ -1,52 +1,53 @@
 import { describe, expect, it } from "vitest";
 
-import {
-	BackupStateMachine,
-	assertCanCommitManifest,
-} from "../../src/orchestration/backupState.js";
+import { BackupState } from "../../src/orchestration/backupState.js";
 
-describe("BackupStateMachine", () => {
+function advanceToVerified(state_backup: BackupState): void {
+	for (const state_next of [
+		"locked",
+		"preflight_passed",
+		"quiesced",
+		"postgres_complete",
+		"clickhouse_complete",
+		"blob_complete",
+		"verified",
+	] as const) {
+		state_backup.transition(state_next);
+	}
+}
+
+describe("BackupState", () => {
 	it("rejects transitions that skip required states", () => {
-		const machine_state = new BackupStateMachine();
+		const state_backup = new BackupState();
 
-		expect(() => machine_state.transition("preflight_passed")).toThrow(/created.*locked/i);
+		expect(() => state_backup.transition("preflight_passed"))
+			.toThrow(/created.*locked/i);
 	});
 
 	it("accepts the documented state sequence", () => {
-		const machine_state = new BackupStateMachine();
-		const states_expected = [
-			"locked",
-			"preflight_passed",
-			"quiesced",
-			"postgres_complete",
-			"clickhouse_complete",
-			"blob_complete",
-			"verified",
-			"committed",
-		] as const;
-
-		for (const state_expected of states_expected) {
-			machine_state.transition(state_expected);
+		const state_backup = new BackupState();
+		for (const name_component of ["postgres", "clickhouse", "blob"] as const) {
+			state_backup.recordReceipt(name_component, {
+				verified_at: "2026-07-24T10:00:00.000Z",
+			});
 		}
 
-		expect(machine_state.current).toBe("committed");
-	});
-});
+		advanceToVerified(state_backup);
+		state_backup.transition("committed");
 
-describe("assertCanCommitManifest", () => {
+		expect(state_backup.current).toBe("committed");
+	});
+
 	it("rejects commit until every required receipt is verified", () => {
-		expect(() => assertCanCommitManifest({
-			postgres: true,
-			clickhouse: true,
-			blob: false,
-		})).toThrow(/blob/i);
-	});
+		const state_backup = new BackupState();
+		state_backup.recordReceipt("postgres", {
+			verified_at: "2026-07-24T10:00:00.000Z",
+		});
+		state_backup.recordReceipt("clickhouse", {
+			verified_at: "2026-07-24T10:00:00.000Z",
+		});
+		advanceToVerified(state_backup);
 
-	it("accepts commit when every required receipt is verified", () => {
-		expect(() => assertCanCommitManifest({
-			postgres: true,
-			clickhouse: true,
-			blob: true,
-		})).not.toThrow();
+		expect(() => state_backup.transition("committed")).toThrow(/blob/i);
 	});
 });

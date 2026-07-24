@@ -85,7 +85,10 @@ export class GcsDestination implements BackupDestination {
 		});
 
 		const metadata_object = await this.getFileMetadata(file_object);
-		if (metadata_object.size_bytes !== data_object.length || metadata_object.sha256 !== sha256) {
+		if (
+			metadata_object.size_bytes !== data_object.length
+			|| metadata_object.sha256 !== sha256
+		) {
 			throw new Error(`GCS verification failed for ${path_object}`);
 		}
 		return metadata_object;

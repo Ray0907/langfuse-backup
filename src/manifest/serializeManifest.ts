@@ -3,8 +3,10 @@ import { createHash } from "node:crypto";
 import { parseManifest } from "./readManifest.js";
 import type { RecoveryManifest } from "./schema.js";
 
-const pattern_secret_key = /(^|_)(access_key|authorization|credential|hmac_secret|password|private_key|token)($|_)/i;
-const pattern_secret_value = /([a-z][a-z0-9+.-]*:\/\/)[^:\s/@]+:[^@\s/]+@|-----BEGIN [A-Z ]*PRIVATE KEY-----|\bBearer\s+\S+/i;
+const pattern_secret_key =
+	/(^|_)(access_key|authorization|credential|hmac_secret|password|private_key|token)($|_)/i;
+const pattern_secret_value =
+	/([a-z][\w+.-]*:\/\/)[^:\s/@]+:[^@\s/]+@|-----BEGIN [A-Z ]*PRIVATE KEY-----|\bBearer\s+\S+/i;
 
 function assertNoSecrets(value_input: unknown, path_value = "manifest"): void {
 	if (typeof value_input === "string") {
