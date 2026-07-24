@@ -1,2 +1,8 @@
 packages:
   - "."
+
+allowBuilds:
+  esbuild: true
+
+nodeVersion: 24.4.1
+engineStrict: true
