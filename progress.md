@@ -4,16 +4,17 @@ Last updated: 2026-07-24
 
 ## Current State
 
-Status: Planning
+Status: Implementation
 
-The OSS architecture and phased implementation plans are being established.
-No runtime package code exists yet.
+Project bootstrap Tasks 1–3 are complete. The repository now has a tested CLI
+skeleton, validated configuration contracts, and centralized secret redaction.
+The OCI image and continuous-integration tasks remain pending.
 
 ## Milestones
 
 | Milestone | Status | Exit evidence |
 | --- | --- | --- |
-| M0 Project bootstrap | Planned | CLI help, CI, lint, typecheck, unit test pass |
+| M0 Project bootstrap | In progress | CLI, config, lint, typecheck, 7 unit tests pass |
 | M1 Backup foundation | Planned | PostgreSQL and ClickHouse backup receipts pass |
 | M2 Coordinated recovery point | Planned | Queue drain and blob backup integration pass |
 | M3 Restore validation | Planned | Isolated backup-destroy-restore-verify passes |
@@ -39,9 +40,9 @@ No runtime package code exists yet.
 
 ## Next Actions
 
-1. Review and approve the architecture and phase boundaries.
-2. Execute the project-bootstrap plan.
-3. Keep this file updated after every implementation loop.
+1. Build and smoke-test the OCI image.
+2. Add continuous integration and complete the M0 gate.
+3. Continue with the backup-foundation plan after M0 passes.
 
 ## Loop Run
 
@@ -53,3 +54,14 @@ No runtime package code exists yet.
   Correct; stop.
 - Stop: pass; Required artifacts and fixed verification are complete; implementation
   and recovery behavior remain unproven until their plans are executed.
+
+## Loop Run: Bootstrap Batch 1
+
+- Contract: Implementation request; complete bootstrap Tasks 1–3, maximum 5 rounds;
+  run `pnpm verify`; directly related local files and no external writes.
+- Round 1: Node 24.18.0 and pnpm 11.0.0 were available; added repository metadata,
+  CLI skeleton, configuration, and logging contracts; config RED exposed shallow
+  freezing and lint RED exposed missing Node globals; fixed both root causes;
+  `pnpm verify` passed 3 test files and 7 tests; Correct; continue with Tasks 4–5.
+- Stop: pass; The first three-task batch is verified; M0 remains incomplete until
+  the OCI image and CI checks pass.
