@@ -1,23 +1,32 @@
 # langfuse-backup
 
-Planning workspace for an open-source backup and restore tool for self-hosted
-Langfuse.
+Standalone open-source backup and restore tooling for self-hosted Langfuse.
 
-The planned product is a standalone CLI and OCI image. It coordinates native
+The package provides a TypeScript CLI and OCI image. It coordinates native
 PostgreSQL, ClickHouse, Redis queue, and blob-storage capabilities to create a
 versioned and verifiable recovery point. It does not introduce a custom database
 backup format.
 
-## Initial Scope
+## Status
 
-- Self-hosted Langfuse deployed with Docker Compose.
-- PostgreSQL through `pg_dump` and `pg_restore`.
-- Single-node ClickHouse through native `BACKUP` and `RESTORE`.
-- Redis ingestion queue drain verification.
-- Active MinIO, GCS, or S3-compatible blob storage.
-- GCS as the first backup destination.
-- Coordinated and explicitly weaker online consistency modes.
-- Machine-readable manifests and isolated restore verification.
+Implementation is in progress on the ordered plans below. Commands that have not
+reached their verified milestone fail with `NOT_IMPLEMENTED` instead of claiming
+that a backup succeeded.
+
+## Development
+
+Requirements are Node.js 24, pnpm 11, and Docker with Compose.
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+pnpm verify
+docker build -t langfuse-backup:test .
+bash test/container/smoke.sh langfuse-backup:test
+```
+
+Start from [examples/config.example.yaml](examples/config.example.yaml). Secret
+values must use environment-variable or mounted-file references.
 
 ## Documents
 
@@ -38,8 +47,5 @@ backup format.
 5. Restore is tested only against a separate, empty target deployment.
 6. Provider adapters reuse native backup APIs instead of reimplementing them.
 
-## Current Status
-
-Planning only. No package code has been implemented yet. Follow
-[progress.md](progress.md) for completed work, loop evidence, decisions, risks,
-and the next executable milestone.
+Follow [progress.md](progress.md) for verified milestones, evidence, decisions,
+risks, and the next executable task.
