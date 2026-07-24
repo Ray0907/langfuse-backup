@@ -27,6 +27,7 @@
 	"packageManager": "pnpm@11.0.0",
 	"dependencies": {
 		"@google-cloud/storage": "7.21.0",
+		"bullmq": "5.80.12",
 		"commander": "^15.0.0",
 		"yaml": "^2.9.0",
 		"zod": "^4.4.3"
