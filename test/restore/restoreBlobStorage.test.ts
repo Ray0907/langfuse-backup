@@ -1,41 +1,40 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { gzipSync } from "node:zlib";
 
 import { describe, expect, it, vi } from "vitest";
 
+import type { DestinationObject } from "../../src/destination/types.js";
+import type { BlobReceipt } from "../../src/manifest/schema.js";
 import {
 	restoreBlobStorage,
-	type BlobRestoreEntry,
-	type BlobRestoreJournal,
+	type BackupBlobReference,
+	type RestoreBlobJournalEntry,
 } from "../../src/restore/restoreBlobStorage.js";
-import type { DestinationObject } from "../../src/destination/types.js";
 
-function getSha256(value_data: string): string {
-	return createHash("sha256").update(value_data).digest("hex");
+function createInventory(lines_inventory: object[]): Buffer {
+	return gzipSync(lines_inventory
+		.map((entry_inventory) => JSON.stringify(entry_inventory))
+		.join("\n")
+		.concat("\n"));
 }
 
-function createEntry(
-	target_key: string,
-	value_data: string,
-	options: Partial<BlobRestoreEntry> = {},
-): BlobRestoreEntry {
+function createReceipt(
+	provider: BlobReceipt["provider"],
+	data_inventory: Buffer,
+): BlobReceipt {
 	return {
-		target_key,
-		source_path: `backup/${target_key}`,
-		source_generation: "10",
-		size_bytes: Buffer.byteLength(value_data),
-		checksum: {
-			algorithm: "sha256",
-			value: getSha256(value_data),
-		},
-		...options,
+		provider,
+		inventory_path: "backup/blob.ndjson.gz",
+		object_count: 1,
+		size_bytes: data_inventory.byteLength,
+		sha256: createHash("sha256").update(data_inventory).digest("hex"),
+		started_at: "2026-07-24T12:00:00.000Z",
+		completed_at: "2026-07-24T12:00:00.000Z",
+		verified_at: "2026-07-24T12:00:00.000Z",
 	};
 }
 
-function createDestinationObject(
-	path_object: string,
-	data_object: Buffer,
-): DestinationObject {
+function createObject(path_object: string, data_object: Buffer): DestinationObject {
 	return {
 		path: path_object,
 		generation: 1,
@@ -46,144 +45,173 @@ function createDestinationObject(
 	};
 }
 
-function getCompleted(journal: BlobRestoreJournal | null): Record<string, unknown> {
-	return journal?.completed ?? {};
-}
-
 describe("restoreBlobStorage", () => {
-	it("restores exact GCS generations and MinIO-copy objects", async () => {
-		const entries = [
-			createEntry("events/raw.json", "event", { source_generation: "123" }),
-			createEntry("media/image.png", "media", {
-				source_path: "backups/blob-copy/media/image.png",
-				source_generation: "77",
-			}),
-		];
-		const source_requests: Array<{ path: string; generation?: string }> = [];
-		const data_by_target: Record<string, string> = {
-			"events/raw.json": "event",
-			"media/image.png": "media",
-		};
-		let journal_saved: BlobRestoreJournal | null = null;
+	it("restores a specific live GCS generation and journals it", async () => {
+		const data_object = Buffer.from("123456789");
+		const crc32c = "4waSgw==";
+		const data_inventory = createInventory([{
+			name: "events/raw.json",
+			generation: "42",
+			size_bytes: data_object.byteLength,
+			crc32c,
+			updated_at: "2026-07-24T12:00:00.000Z",
+		}]);
+		const references_seen: BackupBlobReference[] = [];
+		const journal_seen: RestoreBlobJournalEntry[] = [];
 
 		const result_restore = await restoreBlobStorage({
-			backup_id: "backup-1",
-			entries,
-			open_source: async (entry_restore) => {
-				source_requests.push({
-					path: entry_restore.source_path,
-					...(entry_restore.source_generation === undefined
-						? {}
-						: { generation: entry_restore.source_generation }),
-				});
-				return (async function* readSource() {
-					yield Buffer.from(data_by_target[entry_restore.target_key] ?? "");
-				})();
+			receipt: createReceipt("gcs_inventory", data_inventory),
+			inventory_data: data_inventory,
+			read_backup_object: async (reference) => {
+				references_seen.push(reference);
+				return { data: data_object, crc32c };
 			},
-			stat_target: async () => null,
-			upload_target: async (upload) => createDestinationObject(
-				upload.target_key,
-				await readFile(upload.path_file),
-			),
-			read_journal: async () => journal_saved,
-			write_journal: async (journal) => {
-				journal_saved = structuredClone(journal);
+			stat_target_object: async () => null,
+			write_target_object: async (path_object, data_target) =>
+				createObject(path_object, data_target),
+			read_journal: async () => [],
+			append_journal: async (entry_journal) => {
+				journal_seen.push(entry_journal);
 			},
 		});
 
-		expect(source_requests).toEqual([
-			{ path: "backup/events/raw.json", generation: "123" },
-			{ path: "backups/blob-copy/media/image.png", generation: "77" },
-		]);
-		expect(result_restore.restored_count).toBe(2);
-		expect(Object.keys(getCompleted(journal_saved))).toHaveLength(2);
+		expect(references_seen).toEqual([{
+			provider: "gcs",
+			path: "events/raw.json",
+			generation: "42",
+		}]);
+		expect(journal_seen).toHaveLength(1);
+		expect(result_restore).toMatchObject({ object_count: 1 });
 	});
 
-	it("rejects checksum mismatches before upload", async () => {
-		const upload_target = vi.fn();
+	it("restores an S3-copy object using its destination SHA-256", async () => {
+		const data_object = Buffer.from("copied-object");
+		const sha256 = createHash("sha256").update(data_object).digest("hex");
+		const data_inventory = createInventory([{
+			source_key: "media/image.png",
+			source_etag: "\"opaque-etag-2\"",
+			size_bytes: data_object.byteLength,
+			destination_path: "staging/blob/media/image.png",
+			destination_generation: 7,
+			destination_sha256: sha256,
+		}]);
 
-		await expect(restoreBlobStorage({
-			backup_id: "backup-1",
-			entries: [createEntry("events/raw.json", "expected")],
-			open_source: async () => (async function* readSource() {
-				yield Buffer.from("tampered");
-			})(),
-			stat_target: async () => null,
-			upload_target,
-			read_journal: async () => null,
-			write_journal: async () => undefined,
-		})).rejects.toThrow(/checksum.*mismatch/i);
-
-		expect(upload_target).not.toHaveBeenCalled();
-	});
-
-	it("refuses pre-existing target objects without overwrite mode", async () => {
-		const entry_restore = createEntry("events/raw.json", "event");
-
-		await expect(restoreBlobStorage({
-			backup_id: "backup-1",
-			entries: [entry_restore],
-			open_source: async () => (async function* readSource() {
-				yield Buffer.from("event");
-			})(),
-			stat_target: async () => createDestinationObject(
-				entry_restore.target_key,
-				Buffer.from("existing"),
-			),
-			upload_target: async () => {
-				throw new Error("upload must not run");
+		const result_restore = await restoreBlobStorage({
+			receipt: createReceipt("s3_copy", data_inventory),
+			inventory_data: data_inventory,
+			read_backup_object: async (reference) => {
+				expect(reference).toMatchObject({
+					provider: "copy",
+					path: "staging/blob/media/image.png",
+					generation: 7,
+				});
+				return { data: data_object, sha256 };
 			},
-			read_journal: async () => null,
-			write_journal: async () => undefined,
+			stat_target_object: async () => null,
+			write_target_object: async (path_object, data_target) =>
+				createObject(path_object, data_target),
+			read_journal: async () => [],
+			append_journal: async () => undefined,
+		});
+
+		expect(result_restore.sha256_by_path["media/image.png"]).toBe(sha256);
+	});
+
+	it("rejects checksum mismatches and pre-existing target objects", async () => {
+		const data_object = Buffer.from("payload");
+		const data_inventory = createInventory([{
+			source_key: "events/raw.json",
+			source_etag: "etag",
+			size_bytes: data_object.byteLength,
+			destination_path: "staging/blob/events/raw.json",
+			destination_generation: 1,
+			destination_sha256: "a".repeat(64),
+		}]);
+		const receipt = createReceipt("s3_copy", data_inventory);
+		const write_target_object = vi.fn(async (path_object: string, data: Buffer) =>
+			createObject(path_object, data));
+
+		await expect(restoreBlobStorage({
+			receipt,
+			inventory_data: data_inventory,
+			read_backup_object: async () => ({ data: data_object }),
+			stat_target_object: async () => null,
+			write_target_object,
+			read_journal: async () => [],
+			append_journal: async () => undefined,
+		})).rejects.toThrow(/checksum.*mismatch/i);
+		expect(write_target_object).not.toHaveBeenCalled();
+
+		await expect(restoreBlobStorage({
+			receipt,
+			inventory_data: data_inventory,
+			read_backup_object: async () => ({ data: data_object }),
+			stat_target_object: async (path_object) =>
+				createObject(path_object, data_object),
+			write_target_object,
+			read_journal: async () => [],
+			append_journal: async () => undefined,
 		})).rejects.toThrow(/target.*already exists/i);
 	});
 
-	it("journals each verified object and resumes after interruption", async () => {
-		const entries = [
-			createEntry("events/first.json", "first"),
-			createEntry("events/second.json", "second"),
-		];
-		const objects_target = new Map<string, DestinationObject>();
-		let journal_saved: BlobRestoreJournal | null = null;
-		let interrupt_second = true;
-		const open_source = async (entry_restore: BlobRestoreEntry) =>
-			(async function* readSource() {
-				if (entry_restore.target_key.endsWith("second.json") && interrupt_second) {
-					throw new Error("source interrupted");
-				}
-				yield Buffer.from(entry_restore.target_key.endsWith("first.json")
-					? "first"
-					: "second");
-			})();
-		const upload_target = vi.fn(async (upload: {
-			target_key: string;
-			path_file: string;
-		}) => {
-			const object_target = createDestinationObject(
-				upload.target_key,
-				await readFile(upload.path_file),
-			);
-			objects_target.set(upload.target_key, object_target);
-			return object_target;
-		});
-		const options_base = {
-			backup_id: "backup-1",
-			entries,
-			open_source,
-			stat_target: async (target_key: string) => objects_target.get(target_key) ?? null,
-			upload_target,
-			read_journal: async () => journal_saved,
-			write_journal: async (journal: BlobRestoreJournal) => {
-				journal_saved = structuredClone(journal);
-			},
+	it("resumes only journaled, verified objects after interruption", async () => {
+		const objects = [
+			["events/first.json", Buffer.from("first")],
+			["media/second.png", Buffer.from("second")],
+		] as const;
+		const entries = objects.map(([path_object, data_object], index_object) => ({
+			source_key: path_object,
+			source_etag: `etag-${index_object}`,
+			size_bytes: data_object.byteLength,
+			destination_path: `staging/blob/${path_object}`,
+			destination_generation: index_object + 1,
+			destination_sha256: createHash("sha256").update(data_object).digest("hex"),
+		}));
+		const data_inventory = createInventory(entries);
+		const receipt = {
+			...createReceipt("s3_copy", data_inventory),
+			object_count: 2,
 		};
+		const objects_target = new Map<string, DestinationObject>();
+		const journal: RestoreBlobJournalEntry[] = [];
+		let should_interrupt = true;
 
-		await expect(restoreBlobStorage(options_base)).rejects.toThrow(/interrupted/i);
-		expect(Object.keys(getCompleted(journal_saved))).toEqual(["events/first.json"]);
+		const run_restore = async () => restoreBlobStorage({
+			receipt,
+			inventory_data: data_inventory,
+			read_backup_object: async (reference) => {
+				if (reference.path.includes("second") && should_interrupt) {
+					throw new Error("interrupted");
+				}
+				const data_object = objects.find(([path_object]) =>
+					reference.path.endsWith(path_object))?.[1];
+				if (data_object === undefined) {
+					throw new Error("missing fixture");
+				}
+				return { data: data_object };
+			},
+			stat_target_object: async (path_object) =>
+				objects_target.get(path_object) ?? null,
+			write_target_object: async (path_object, data_object) => {
+				const metadata = createObject(path_object, data_object);
+				objects_target.set(path_object, metadata);
+				return metadata;
+			},
+			read_journal: async () => journal,
+			append_journal: async (entry_journal) => {
+				journal.push(entry_journal);
+			},
+		});
 
-		interrupt_second = false;
-		const result_resume = await restoreBlobStorage(options_base);
-		expect(result_resume).toMatchObject({ restored_count: 1, skipped_count: 1 });
-		expect(upload_target).toHaveBeenCalledTimes(2);
+		await expect(run_restore()).rejects.toThrow(/interrupted/i);
+		expect(journal.map((entry) => entry.path)).toEqual(["events/first.json"]);
+
+		should_interrupt = false;
+		const result_restore = await run_restore();
+		expect(result_restore.object_count).toBe(2);
+		expect(journal.map((entry) => entry.path)).toEqual([
+			"events/first.json",
+			"media/second.png",
+		]);
 	});
 });
