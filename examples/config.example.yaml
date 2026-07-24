@@ -1,0 +1,26 @@
+deployment_id: langfuse-production
+consistency:
+  mode: coordinated
+  pre_hook:
+    command:
+      - /usr/local/bin/block-langfuse-ingestion
+  post_hook:
+    command:
+      - /usr/local/bin/unblock-langfuse-ingestion
+destination:
+  provider: gcs
+  bucket: example-langfuse-backups
+  prefix: recovery-points
+postgres:
+  url:
+    env: LANGFUSE_POSTGRES_URL
+clickhouse:
+  endpoint: http://clickhouse:8123
+  database: default
+  named_collection: langfuse_backup
+redis:
+  url:
+    file: /run/secrets/redis_url
+blob:
+  provider: gcs
+  bucket: example-langfuse-events
