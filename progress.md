@@ -4,7 +4,7 @@ Last updated: 2026-07-24
 
 ## Current State
 
-Status: Implementing M1
+Status: Implementing M2
 
 Project bootstrap is complete. The repository now has a tested CLI, validated
 configuration contracts, centralized redaction, a non-root OCI image with
@@ -15,7 +15,7 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 | Milestone | Status | Exit evidence |
 | --- | --- | --- |
 | M0 Project bootstrap | Complete | `pnpm verify`, image build, smoke test pass |
-| M1 Backup foundation | Planned | PostgreSQL and ClickHouse backup receipts pass |
+| M1 Backup foundation | Complete | 51 tests and `pnpm verify` pass |
 | M2 Coordinated recovery point | Planned | Queue drain and blob backup integration pass |
 | M3 Restore validation | Planned | Isolated backup-destroy-restore-verify passes |
 | M4 OSS release | Planned | Signed npm and OCI release plus public docs |
@@ -40,7 +40,7 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 
 ## Next Actions
 
-1. Execute the backup-foundation plan.
+1. Execute the consistency and blob-storage plan.
 2. Keep this file updated after every verified milestone.
 
 ## Loop Run
@@ -73,3 +73,14 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
   SHA-pinned CI, and dependency updates; 7 tests, image build, and smoke passed;
   Correct; continue with M1.
 - Stop: pass; M0 exit criteria are verified; release-time digest pinning remains M4.
+
+## Loop Run: Backup Foundation
+
+- Contract: Implementation request; complete M1, maximum 5 rounds; run `pnpm verify`;
+  local package files only and no external writes.
+- Round 1: Added manifest compatibility, GCS locking/staging, PostgreSQL custom dumps,
+  ClickHouse native backup polling, and manifest-last orchestration; full gate first
+  found a BullMQ reader type mismatch from concurrent M2 work; narrowed it to
+  `JobType`; `pnpm verify` passed 17 test files and 51 tests; Correct; continue M2.
+- Stop: pass; M1 receipts, failure paths, and commit marker are verified; live cloud
+  and database recovery remains covered by the later isolated recovery E2E.
