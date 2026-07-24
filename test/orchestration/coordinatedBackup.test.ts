@@ -19,7 +19,7 @@ const timestamp = "2026-07-24T12:00:00.000Z";
 function createDestination(): {
 	destination: BackupDestination;
 	objects: Map<string, DestinationObject>;
-} {
+	} {
 	const objects = new Map<string, DestinationObject>();
 	let generation_next = 1;
 	const destination: BackupDestination = {

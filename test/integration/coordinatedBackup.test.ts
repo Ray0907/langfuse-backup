@@ -128,7 +128,9 @@ describe("coordinated backup integration", () => {
 			on_stage: (stage_backup) => {
 				stages_seen.push(stage_backup);
 			},
-			now: () => new Date(times[index_time++] ?? times.at(-1)),
+			now: () => new Date(
+				times[index_time++] ?? "2026-07-24T12:00:08.000Z",
+			),
 		});
 
 		expect(stages_seen).toEqual([
