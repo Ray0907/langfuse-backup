@@ -13,11 +13,11 @@ describe("GCS inventory integration", () => {
 		const entries_seeded: Array<Record<string, unknown>> = Array.from(
 			{ length: 25 },
 			(_, index) => ({
-			name: `events/raw-${Math.floor(index / 2)}.json`,
-			generation: String(index + 1),
-			size: String(index + 10),
-			crc32c: `crc-${index}`,
-			updated_at: "2026-07-24T12:00:00.000Z",
+				name: `events/raw-${Math.floor(index / 2)}.json`,
+				generation: String(index + 1),
+				size: String(index + 10),
+				crc32c: `crc-${index}`,
+				updated_at: "2026-07-24T12:00:00.000Z",
 			}),
 		);
 		const source: GcsInventorySource = {
