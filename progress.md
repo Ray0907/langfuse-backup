@@ -4,17 +4,17 @@ Last updated: 2026-07-24
 
 ## Current State
 
-Status: Implementation
+Status: Implementing M1
 
-Project bootstrap Tasks 1–3 are complete. The repository now has a tested CLI
-skeleton, validated configuration contracts, and centralized secret redaction.
-The OCI image and continuous-integration tasks remain pending.
+Project bootstrap is complete. The repository now has a tested CLI, validated
+configuration contracts, centralized redaction, a non-root OCI image with
+PostgreSQL 17 clients, and pinned continuous-integration gates.
 
 ## Milestones
 
 | Milestone | Status | Exit evidence |
 | --- | --- | --- |
-| M0 Project bootstrap | In progress | CLI, config, lint, typecheck, 7 unit tests pass |
+| M0 Project bootstrap | Complete | `pnpm verify`, image build, smoke test pass |
 | M1 Backup foundation | Planned | PostgreSQL and ClickHouse backup receipts pass |
 | M2 Coordinated recovery point | Planned | Queue drain and blob backup integration pass |
 | M3 Restore validation | Planned | Isolated backup-destroy-restore-verify passes |
@@ -40,9 +40,8 @@ The OCI image and continuous-integration tasks remain pending.
 
 ## Next Actions
 
-1. Build and smoke-test the OCI image.
-2. Add continuous integration and complete the M0 gate.
-3. Continue with the backup-foundation plan after M0 passes.
+1. Execute the backup-foundation plan.
+2. Keep this file updated after every verified milestone.
 
 ## Loop Run
 
@@ -65,3 +64,12 @@ The OCI image and continuous-integration tasks remain pending.
   `pnpm verify` passed 3 test files and 7 tests; Correct; continue with Tasks 4–5.
 - Stop: pass; The first three-task batch is verified; M0 remains incomplete until
   the OCI image and CI checks pass.
+
+## Loop Run: Bootstrap Batch 2
+
+- Contract: Implementation request; complete bootstrap Tasks 4–5, maximum 5 rounds;
+  run `pnpm verify`, image build, and container smoke; directly related local files.
+- Round 1: Added a PostgreSQL 17 and Node 24 multi-stage image, non-root smoke test,
+  SHA-pinned CI, and dependency updates; 7 tests, image build, and smoke passed;
+  Correct; continue with M1.
+- Stop: pass; M0 exit criteria are verified; release-time digest pinning remains M4.
