@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a focused recovery capability
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Recovery problem
+      description: Describe the operator workflow and failure mode.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include safety, compatibility, and verification expectations.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Project boundaries
+      options:
+        - label: The proposal keeps credentials and customer data out of logs and manifests.
+          required: true
+        - label: The proposal preserves explicit, isolated restore behavior.
+          required: true

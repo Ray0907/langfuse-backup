@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible non-security defect
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never include credentials, signed URLs, backup contents, or customer data.
+        Report security and destructive-restore vulnerabilities privately.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0 or full commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - CLI or configuration
+        - PostgreSQL
+        - ClickHouse
+        - Redis or consistency
+        - Blob storage
+        - Manifest or destination
+        - Restore
+        - Container or release
+    validations:
+      required: true
+  - type: textarea
+    id: topology
+    attributes:
+      label: Redacted deployment topology
+      description: Include versions and providers, but no secret values or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide minimal steps and synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Redacted verification output
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, signed URLs, customer data, and backup contents.
+          required: true
+        - label: This is not a security or unintended destructive-restore report.
+          required: true
