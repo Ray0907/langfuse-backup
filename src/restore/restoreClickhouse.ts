@@ -71,14 +71,18 @@ export async function restoreClickhouse(
 	const sleep = options.sleep ?? sleepDefault;
 	const server_version = await getClickhouseVersion(options.query);
 	assertCompatibleVersion(options.receipt.server_version, server_version);
-	const operation_id = options.create_operation_id?.() ?? randomUUID();
+	const id_fallback = options.create_operation_id?.() ?? randomUUID();
 	const target_backup = `S3(${options.named_collection}, `
 		+ `${quoteString(options.receipt.object_prefix)})`;
 
-	await options.query(
+	const result_start = await options.query(
 		`RESTORE DATABASE ${quoteIdentifier(options.receipt.database)} `
-		+ `FROM ${target_backup} ASYNC ID ${quoteString(operation_id)}`,
+		+ `FROM ${target_backup} ASYNC FORMAT JSON`,
 	);
+	const id_server = result_start.data[0]?.id;
+	const operation_id = typeof id_server === "string" && id_server !== ""
+		? id_server
+		: id_fallback;
 
 	for (let attempt_poll = 0; attempt_poll < max_poll_attempts; attempt_poll += 1) {
 		const status_restore = await queryBackupStatus(options.query, operation_id);

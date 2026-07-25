@@ -1,0 +1,9 @@
+<clickhouse>
+	<named_collections>
+		<recovery_store>
+			<url>http://recovery-store:9000/recovery</url>
+			<access_key_id from_env="RECOVERY_STORE_ACCESS_KEY"/>
+			<secret_access_key from_env="RECOVERY_STORE_SECRET_KEY"/>
+		</recovery_store>
+	</named_collections>
+</clickhouse>

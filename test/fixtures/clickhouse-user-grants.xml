@@ -1,0 +1,10 @@
+<clickhouse>
+	<users>
+		<default>
+			<grants>
+				<query>GRANT ALL ON *.*</query>
+				<query>GRANT NAMED COLLECTION ON recovery_store</query>
+			</grants>
+		</default>
+	</users>
+</clickhouse>

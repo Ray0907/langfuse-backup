@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres@sha256:4f736ae292687621d4dbe0d499ffd024a36bd2ee7d8ca6f2ccd4c800f047b394
+    environment:
+      POSTGRES_DB: langfuse
+      POSTGRES_PASSWORD: ${SOURCE_POSTGRES_PASSWORD:?required}
+      POSTGRES_USER: langfuse
+    labels:
+      org.langfuse.backup.deployment-id: ${SOURCE_DEPLOYMENT_ID:?required}
+    ports:
+      - "127.0.0.1::5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse -d langfuse"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server@sha256:537014a67ce8bf1f5c79c2e2b26fb30b8285a86ffff03875bb14ed17ea35db62
+    environment:
+      CLICKHOUSE_PASSWORD: ${SOURCE_CLICKHOUSE_PASSWORD:?required}
+      RECOVERY_STORE_ACCESS_KEY: ${RECOVERY_STORE_ACCESS_KEY:?required}
+      RECOVERY_STORE_SECRET_KEY: ${RECOVERY_STORE_SECRET_KEY:?required}
+    labels:
+      org.langfuse.backup.deployment-id: ${SOURCE_DEPLOYMENT_ID:?required}
+    ports:
+      - "127.0.0.1::8123"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          clickhouse-client --password "$$CLICKHOUSE_PASSWORD"
+          --query "SELECT 1"
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-recovery-store.xml:/etc/clickhouse-server/config.d/recovery-store.xml:ro
+      - ./clickhouse-user-grants.xml:/etc/clickhouse-server/users.d/recovery-grants.xml:ro
+
+  blob:
+    image: minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    command: server /data --address :9000
+    environment:
+      MINIO_ROOT_PASSWORD: ${SOURCE_BLOB_SECRET_KEY:?required}
+      MINIO_ROOT_USER: ${SOURCE_BLOB_ACCESS_KEY:?required}
+    labels:
+      org.langfuse.backup.deployment-id: ${SOURCE_DEPLOYMENT_ID:?required}
+    ports:
+      - "127.0.0.1::9000"
+    volumes:
+      - blob_data:/data
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  blob_data:

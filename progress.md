@@ -4,7 +4,7 @@ Last updated: 2026-07-24
 
 ## Current State
 
-Status: Implementing M3
+Status: Implementing M4
 
 Project bootstrap is complete. The repository now has a tested CLI, validated
 configuration contracts, centralized redaction, a non-root OCI image with
@@ -17,7 +17,7 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 | M0 Project bootstrap | Complete | `pnpm verify`, image build, smoke test pass |
 | M1 Backup foundation | Complete | 51 tests and `pnpm verify` pass |
 | M2 Coordinated recovery point | Complete | 74 tests and `pnpm verify` pass |
-| M3 Restore validation | Planned | Isolated backup-destroy-restore-verify passes |
+| M3 Restore validation | Complete | 113 tests plus isolated recovery E2E pass |
 | M4 OSS release | Planned | Signed npm and OCI release plus public docs |
 
 ## Decisions
@@ -40,7 +40,7 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 
 ## Next Actions
 
-1. Execute the restore-validation plan.
+1. Execute the OSS release plan without publishing external artifacts.
 2. Keep this file updated after every verified milestone.
 
 ## Loop Run
@@ -96,3 +96,18 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
   Correct; continue M3.
 - Stop: pass; coordinated ordering, receipts, and failure cleanup are verified;
   containerized backup-destroy-restore evidence remains the M3 gate.
+
+## Loop Run: Restore Validation
+
+- Contract: Implementation request; complete M3, maximum 5 rounds; run `pnpm verify`
+  and `bash scripts/run-recovery-e2e.sh`; local package files and isolated test
+  containers only.
+- Round 1: Added read-only planning, resumable blob restore, native PostgreSQL and
+  ClickHouse restore, explicit restore orchestration, and isolated source/target
+  Compose fixtures; a safety test exposed a lock leak on initial journal failure
+  and the live ClickHouse 26 API exposed server-assigned async operation IDs; fixed
+  both root causes; `pnpm verify` passed 34 files and 113 tests, and the recovery E2E
+  passed after destroying source containers and volumes; Correct; continue M4.
+- Stop: pass; M3 proves manifest-last backup, destructive source teardown, target
+  restore, component reads, and an HTTP API smoke read; external publication remains
+  outside the authorized implementation scope.

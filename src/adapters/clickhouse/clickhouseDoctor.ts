@@ -35,6 +35,10 @@ export function createHttpClickhouseQuery(options: {
 			const text_error = await response_query.text();
 			throw new Error(`ClickHouse query failed (${response_query.status}): ${text_error}`);
 		}
-		return await response_query.json() as { data: Array<Record<string, unknown>> };
+		const text_response = await response_query.text();
+		if (text_response.trim() === "") {
+			return { data: [] };
+		}
+		return JSON.parse(text_response) as { data: Array<Record<string, unknown>> };
 	};
 }

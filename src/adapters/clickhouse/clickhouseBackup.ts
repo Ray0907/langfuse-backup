@@ -62,17 +62,21 @@ export async function createClickhouseBackup(
 	const get_now = options.now ?? (() => new Date());
 	const sleep = options.sleep ?? sleepDefault;
 	const max_poll_attempts = options.max_poll_attempts ?? 20;
-	const operation_id = options.create_operation_id?.() ?? randomUUID();
+	const id_path = options.create_operation_id?.() ?? randomUUID();
 	const path_remote = `${options.deployment_id}/backups/${options.backup_id}`
-		+ `/clickhouse/${operation_id}`;
+		+ `/clickhouse/${id_path}`;
 	const started_at = get_now().toISOString();
 	const server_version = await getClickhouseVersion(options.query);
 	const target_backup = createBackupTarget(options, path_remote);
 
-	await options.query(
+	const result_start = await options.query(
 		`BACKUP DATABASE ${quoteIdentifier(options.database)} TO ${target_backup} `
-		+ `ASYNC ID ${quoteString(operation_id)}`,
+		+ "ASYNC FORMAT JSON",
 	);
+	const id_server = result_start.data[0]?.id;
+	const operation_id = typeof id_server === "string" && id_server !== ""
+		? id_server
+		: id_path;
 
 	for (let attempt_poll = 0; attempt_poll < max_poll_attempts; attempt_poll += 1) {
 		const status_backup = await queryBackupStatus(options.query, operation_id);
