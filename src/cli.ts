@@ -65,7 +65,21 @@ export function createProgram(io_cli: CliIo = {
 	command_restore
 		.command("run")
 		.description("Run an explicitly confirmed restore")
-		.action(() => {
+		.requiredOption("--target <path>", "Separate target configuration")
+		.requiredOption("--expected-backup-id <id>", "Exact committed backup ID")
+		.option("--confirm", "Confirm destructive target writes")
+		.action((options_command: {
+			target: string;
+			expectedBackupId: string;
+			confirm?: boolean;
+		}) => {
+			if (options_command.confirm !== true) {
+				throw new CliError(
+					"CONFIRMATION_REQUIRED",
+					"restore run requires --confirm",
+					2,
+				);
+			}
 			throw new CliError("NOT_IMPLEMENTED", "restore run is not implemented yet", 2);
 		});
 
