@@ -117,7 +117,7 @@ jobs:
             --provenance \
             --tag "${name_dist}"
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
