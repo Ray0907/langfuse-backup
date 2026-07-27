@@ -50,7 +50,7 @@
 	"dependencies": {
 		"@aws-sdk/client-s3": "3.1093.0",
 		"@google-cloud/storage": "7.21.0",
-		"bullmq": "5.80.12",
+		"bullmq": "5.81.2",
 		"commander": "15.0.0",
 		"yaml": "2.9.0",
 		"zod": "4.4.3"
