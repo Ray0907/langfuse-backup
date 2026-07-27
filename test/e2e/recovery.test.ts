@@ -76,9 +76,12 @@ describe("disaster recovery", () => {
 			if (process.env.RUN_RECOVERY_E2E !== "1") {
 				throw new Error("Recovery E2E must run through scripts/run-recovery-e2e.sh");
 			}
+			logRecoveryPhase("create-context");
 			const context = await createRecoveryContext();
 			contexts_cleanup.push(context);
+			logRecoveryPhase("start-services");
 			await startRecoveryServices(context);
+			logRecoveryPhase("run-recovery");
 			const result_recovery = await runRecovery(context);
 
 			expect(result_recovery.source_destroyed).toBe(true);
@@ -96,6 +99,7 @@ describe("disaster recovery", () => {
 				"target_unlock",
 			]);
 			process.stdout.write(`${summary_success}\n`);
+			logRecoveryPhase("complete");
 		});
 });
 
@@ -133,11 +137,13 @@ async function startRecoveryServices(context: RecoveryContext): Promise<void> {
 		context.name_source,
 		["up", "--detach", "--wait"],
 	), { env: context.env });
+	logRecoveryPhase("source-services-ready");
 	await runText("docker", createComposeArgs(
 		path_target,
 		context.name_target,
 		["up", "--detach", "--wait"],
 	), { env: context.env });
+	logRecoveryPhase("target-services-ready");
 	await runText("docker", [
 		"run",
 		"--detach",
@@ -166,6 +172,7 @@ async function startRecoveryServices(context: RecoveryContext): Promise<void> {
 			MINIO_ROOT_PASSWORD: context.env.RECOVERY_STORE_SECRET_KEY,
 		},
 	});
+	logRecoveryPhase("recovery-store-started");
 	await runText("docker", [
 		"network",
 		"connect",
@@ -175,6 +182,7 @@ async function startRecoveryServices(context: RecoveryContext): Promise<void> {
 		context.name_store,
 	]);
 	await configureS3Fixtures(context);
+	logRecoveryPhase("s3-fixtures-ready");
 }
 
 async function configureS3Fixtures(context: RecoveryContext): Promise<void> {
@@ -243,7 +251,9 @@ async function runRecovery(context: RecoveryContext): Promise<{
 	const backup_id = `backup-${context.id_run}`;
 	const query_source = await getComposeClickhouseQuery(context, "source");
 	const query_target = await getComposeClickhouseQuery(context, "target");
+	logRecoveryPhase("database-clients-ready");
 	await seedSource(context, source_blob, query_source);
+	logRecoveryPhase("source-seeded");
 	const result_backup = await createBackup({
 		destination,
 		deployment_id: requireEnv(context, "SOURCE_DEPLOYMENT_ID"),
@@ -289,6 +299,7 @@ async function runRecovery(context: RecoveryContext): Promise<{
 			"RECOVERY_STORE_SECRET_KEY",
 		],
 	});
+	logRecoveryPhase("backup-complete");
 	const plan_restore = await createFixtureRestorePlan(
 		context,
 		destination,
@@ -297,7 +308,9 @@ async function runRecovery(context: RecoveryContext): Promise<{
 		result_backup.manifest,
 		query_target,
 	);
+	logRecoveryPhase("restore-plan-complete");
 	await destroySource(context);
+	logRecoveryPhase("source-destroyed");
 	const stages_restore: RestoreStage[] = [];
 	let journal_restore: RestoreJournal | null = null;
 	let target_locked = false;
@@ -361,6 +374,7 @@ async function runRecovery(context: RecoveryContext): Promise<{
 			stages_restore.push(stage_restore);
 		},
 	});
+	logRecoveryPhase("restore-complete");
 	expect(await destination.statObject(result_backup.manifest_path)).not.toBeNull();
 	expect(await destination.statObject(result_restore.report_path)).not.toBeNull();
 	return {
@@ -759,4 +773,13 @@ function requireFixture<T>(value_fixture: T | undefined, name_fixture: string): 
 		throw new Error(`Missing recovery fixture: ${name_fixture}`);
 	}
 	return value_fixture;
+}
+
+function logRecoveryPhase(name_phase: string): void {
+	if (process.env.RECOVERY_E2E_DIAGNOSTICS !== "1") {
+		return;
+	}
+	process.stderr.write(
+		`Recovery E2E phase: ${name_phase} (${Math.round(performance.now())}ms)\n`,
+	);
 }

@@ -12,4 +12,5 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 export RUN_RECOVERY_E2E=1
+export RECOVERY_E2E_DIAGNOSTICS="${RECOVERY_E2E_DIAGNOSTICS:-1}"
 corepack pnpm@11.0.0 vitest run --config vitest.e2e.config.ts
