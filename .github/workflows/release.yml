@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
       - name: Enable pnpm for caching
@@ -86,7 +86,7 @@ jobs:
       packages: write
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Enable pnpm for caching
         run: corepack enable
       - name: Set up Node.js
