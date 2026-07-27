@@ -63,7 +63,7 @@ jobs:
           test "$(docker image inspect langfuse-backup:first --format '{{.Id}}')" = \
             "$(docker image inspect langfuse-backup:second --format '{{.Id}}')"
       - name: Upload SPDX
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: langfuse-backup-spdx
           path: .artifacts/*.spdx.json
