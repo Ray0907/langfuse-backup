@@ -18,7 +18,7 @@ clients, pinned continuous-integration gates, and public-ready documentation.
 | M1 Backup foundation | Complete | 51 tests and `pnpm verify` pass |
 | M2 Coordinated recovery point | Complete | 74 tests and `pnpm verify` pass |
 | M3 Restore validation | Complete | 113 tests plus isolated recovery E2E pass |
-| M4 OSS release automation | Complete | 139 tests, reproducible artifacts and docs |
+| M4 OSS release automation | Complete | 140 tests, reproducible artifacts and docs |
 
 ## Decisions
 

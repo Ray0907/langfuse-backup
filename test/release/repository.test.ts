@@ -95,6 +95,21 @@ describe("public repository release metadata", () => {
 		expect(text_release).toContain("cosign sign --yes");
 	});
 
+	it("allows the generated hidden SPDX path to be uploaded", async () => {
+		const workflow = parse(
+			await readFile(
+				resolve(path_root, ".github/workflows/reproducible-build.yml"),
+				"utf8",
+			),
+		) as unknown;
+		const steps_workflow = collectWorkflowSteps(workflow).flat();
+		const step_upload = steps_workflow.find((step_workflow) =>
+			step_workflow.uses?.startsWith("actions/upload-artifact@")
+			&& step_workflow.with?.path === ".artifacts/*.spdx.json");
+
+		expect(step_upload?.with?.["include-hidden-files"]).toBe(true);
+	});
+
 	it("contains no launch placeholders in public entry points", async () => {
 		const text_public = await Promise.all([
 			"README.md",

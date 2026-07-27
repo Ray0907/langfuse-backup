@@ -67,4 +67,5 @@ jobs:
         with:
           name: langfuse-backup-spdx
           path: .artifacts/*.spdx.json
+          include-hidden-files: true
           if-no-files-found: error
