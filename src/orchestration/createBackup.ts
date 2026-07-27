@@ -34,6 +34,7 @@ export interface CreateBackupOptions {
 	destination: BackupDestination;
 	deployment_id: string;
 	backup_id: string;
+	langfuse_version?: string;
 	consistency_mode?: "online" | "coordinated";
 	consistency?: {
 		mode: "online";
@@ -193,6 +194,9 @@ export async function createBackup(
 			schema_version: "1.0.0",
 			backup_id: options.backup_id,
 			deployment_id: options.deployment_id,
+			...(options.langfuse_version === undefined
+				? {}
+				: { langfuse_version: options.langfuse_version }),
 			created_at,
 			committed_at,
 			tool: {

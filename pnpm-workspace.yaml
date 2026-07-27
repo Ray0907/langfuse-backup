@@ -4,6 +4,8 @@ packages:
 allowBuilds:
   esbuild: true
   msgpackr-extract: false
+overrides:
+  uuid: 11.1.1
 engineStrict: true
 
 nodeVersion: 24.4.1

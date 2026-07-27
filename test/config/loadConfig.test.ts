@@ -4,6 +4,7 @@ import { parseConfigText } from "../../src/config/loadConfig.js";
 
 const config_valid = `
 deployment_id: source-prod
+langfuse_version: 3.205.0
 consistency:
   mode: coordinated
 destination:

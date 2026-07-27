@@ -39,6 +39,7 @@ export const ManifestSchema = z.object({
 	schema_version: z.string().regex(/^1\.\d+\.\d+$/),
 	backup_id: z.string().min(1),
 	deployment_id: z.string().min(1),
+	langfuse_version: z.string().min(1).optional(),
 	created_at: TimestampSchema,
 	committed_at: TimestampSchema,
 	tool: z.object({

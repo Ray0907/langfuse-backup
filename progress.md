@@ -1,14 +1,14 @@
 # Progress
 
-Last updated: 2026-07-24
+Last updated: 2026-07-27
 
 ## Current State
 
-Status: Implementing M4
+Status: Release-candidate source complete; public repository pending
 
-Project bootstrap is complete. The repository now has a tested CLI, validated
-configuration contracts, centralized redaction, a non-root OCI image with
-PostgreSQL 17 clients, and pinned continuous-integration gates.
+The repository now has a tested backup and restore CLI, validated configuration
+contracts, centralized redaction, a reproducible non-root OCI image, PostgreSQL 17
+clients, pinned continuous-integration gates, and public-ready documentation.
 
 ## Milestones
 
@@ -18,7 +18,7 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 | M1 Backup foundation | Complete | 51 tests and `pnpm verify` pass |
 | M2 Coordinated recovery point | Complete | 74 tests and `pnpm verify` pass |
 | M3 Restore validation | Complete | 113 tests plus isolated recovery E2E pass |
-| M4 OSS release | Planned | Signed npm and OCI release plus public docs |
+| M4 OSS release automation | Complete | 135 tests, reproducible artifacts and docs |
 
 ## Decisions
 
@@ -36,12 +36,16 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 - GCS-backed ClickHouse backup requires its S3-compatible interface and HMAC.
 - Blob inventory can be expensive for large buckets.
 - Restore safety requires an empty, isolated target and strict version checks.
-- Publishing under an `@langfuse` scope requires upstream maintainer approval.
+- A live GCP integration run and full released-Langfuse-image recovery remain pending.
+- npm, GHCR, tags, and GitHub Releases remain unpublished until maintainers configure
+  the protected release environment and trusted publishing.
 
 ## Next Actions
 
-1. Execute the OSS release plan without publishing external artifacts.
-2. Keep this file updated after every verified milestone.
+1. Push the verified source to the public GitHub repository.
+2. Confirm the first hosted CI and reproducibility workflows.
+3. Do not create a release tag until the protected release environment and trusted
+   publishing identities are configured.
 
 ## Loop Run
 
@@ -92,7 +96,8 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 - Round 1: Added BullMQ queue inspection, fail-closed hooks/drain, streaming GCS
   inventory, resumable S3-compatible copy, coordinated manifest boundaries, and
   retention planning; dependency install exposed an unreviewed optional build script,
-  so it was explicitly allowlisted; `pnpm verify` passed 26 files and 74 tests;
+  so it was explicitly denied after confirming the JavaScript fallback;
+  `pnpm verify` passed 26 files and 74 tests;
   Correct; continue M3.
 - Stop: pass; coordinated ordering, receipts, and failure cleanup are verified;
   containerized backup-destroy-restore evidence remains the M3 gate.
@@ -111,3 +116,27 @@ PostgreSQL 17 clients, and pinned continuous-integration gates.
 - Stop: pass; M3 proves manifest-last backup, destructive source teardown, target
   restore, component reads, and an HTTP API smoke read; external publication remains
   outside the authorized implementation scope.
+
+## Loop Run: OSS Release and Public CLI
+
+- Contract: Current implementation and publication request; finish M4 and the public
+  CLI, maximum 5 rounds; run `pnpm verify`, plan verification, OCI build and smoke,
+  isolated recovery E2E, and artifact verification; local repository and isolated
+  containers are in budget, and a public GitHub source push is authorized; package,
+  registry, release-tag, and live-cloud publication require separate authorization.
+- Round 1: Replaced CLI placeholders with backup, verification, retention, restore,
+  and doctor runtime wiring; full verification exposed build-time version constants
+  that were unavailable to direct test imports; added safe source fallbacks;
+  Incorrect; continue.
+- Round 2: A stale image first hid the new CLI, then review found backup-specific
+  target locks, a late PostgreSQL client check, retention unaware of active restores,
+  missing blob preflight, and nondeterministic dependency metadata; made the restore
+  lock and journal target-global, moved compatibility checks before writes, retained
+  active recovery points, added provider preflight, and normalized the runtime layer;
+  two clean OCI builds then produced the same image ID; Incorrect until the fixed
+  end-to-end gate reran.
+- Round 3: The fixed gate passed 38 test files and 135 tests, plan verification,
+  container smoke, destructive source-to-target recovery, and artifact verification
+  with a 139-package SPDX inventory; Correct; source verification is complete.
+- Stop: pass; all local implementation and release-candidate gates are complete;
+  the remaining authorized action is the public source push and hosted CI check.

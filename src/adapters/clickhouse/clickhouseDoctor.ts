@@ -1,4 +1,5 @@
 import type { ClickhouseQuery } from "./queryBackupStatus.js";
+import { redactError, redactText } from "../../logging/redact.js";
 
 export async function getClickhouseVersion(query: ClickhouseQuery): Promise<string> {
 	const result_version = await query("SELECT version() AS version FORMAT JSON");
@@ -30,10 +31,15 @@ export function createHttpClickhouseQuery(options: {
 			method: "POST",
 			headers: headers_request,
 			body: text_query,
+		}).catch((error: unknown) => {
+			throw redactError(error, "ClickHouse request failed");
 		});
 		if (!response_query.ok) {
 			const text_error = await response_query.text();
-			throw new Error(`ClickHouse query failed (${response_query.status}): ${text_error}`);
+			throw new Error(
+				`ClickHouse query failed (${response_query.status}): `
+				+ redactText(text_error),
+			);
 		}
 		const text_response = await response_query.text();
 		if (text_response.trim() === "") {

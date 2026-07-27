@@ -1,0 +1,16 @@
+deployment_id: langfuse-recovery-drill
+langfuse_version: 3.205.0
+secret_references: []
+postgres:
+  url:
+    env: LANGFUSE_TARGET_POSTGRES_URL
+clickhouse:
+  endpoint: http://clickhouse-target:8123
+  database: default
+  named_collection: langfuse_backup
+blob:
+  provider: gcs
+  bucket: example-langfuse-restore-target
+smoke_test:
+  command:
+    - /usr/local/bin/check-restored-langfuse

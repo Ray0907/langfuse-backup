@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
 
 import type { Logger } from "../logging/logger.js";
-import { redactValue } from "../logging/redact.js";
+import { redactText } from "../logging/redact.js";
 
 export interface ProcessResult {
 	command: string;
@@ -49,11 +49,6 @@ export type ProcessRunner = (
 	arguments_process: string[],
 	options?: RunProcessOptions,
 ) => Promise<ProcessResult>;
-
-function redactText(text_input: string): string {
-	const value_redacted = redactValue(text_input);
-	return typeof value_redacted === "string" ? value_redacted : "[REDACTED]";
-}
 
 export const runProcess: ProcessRunner = async (
 	command,

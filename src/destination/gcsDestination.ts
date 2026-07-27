@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { Storage, type StorageOptions } from "@google-cloud/storage";
 
+import { redactError } from "../logging/redact.js";
 import type {
 	BackupDestination,
 	DestinationObject,
@@ -41,6 +42,17 @@ function getSha256(data_object: Buffer): string {
 	return createHash("sha256").update(data_object).digest("hex");
 }
 
+async function runProviderOperation<T>(
+	context_error: string,
+	operation_provider: () => Promise<T>,
+): Promise<T> {
+	try {
+		return await operation_provider();
+	} catch (error) {
+		throw redactError(error, context_error);
+	}
+}
+
 function normalizeMetadata(metadata_gcs: GcsMetadata): DestinationObject {
 	const sha256 = metadata_gcs.metadata?.sha256;
 	if (metadata_gcs.name === undefined || metadata_gcs.generation === undefined
@@ -73,16 +85,17 @@ export class GcsDestination implements BackupDestination {
 			? {}
 			: { preconditionOpts: { ifGenerationMatch: options.if_generation_match } };
 
-		await file_object.save(data_object, {
-			resumable: data_object.length > 5 * 1024 * 1024,
-			metadata: {
+		await runProviderOperation("GCS object upload failed", async () =>
+			file_object.save(data_object, {
+				resumable: data_object.length > 5 * 1024 * 1024,
 				metadata: {
-					...options.metadata,
-					sha256,
+					metadata: {
+						...options.metadata,
+						sha256,
+					},
 				},
-			},
-			...precondition_options,
-		});
+				...precondition_options,
+			}));
 
 		const metadata_object = await this.getFileMetadata(file_object);
 		if (
@@ -95,7 +108,10 @@ export class GcsDestination implements BackupDestination {
 	}
 
 	public async getObject(path_object: string): Promise<Buffer> {
-		const [data_object] = await this.bucket.file(path_object).download();
+		const [data_object] = await runProviderOperation(
+			"GCS object download failed",
+			async () => this.bucket.file(path_object).download(),
+		);
 		return data_object;
 	}
 
@@ -111,13 +127,17 @@ export class GcsDestination implements BackupDestination {
 	}
 
 	public async deleteObject(path_object: string, generation: number): Promise<void> {
-		await this.bucket.file(path_object).delete({
-			preconditionOpts: { ifGenerationMatch: generation },
-		});
+		await runProviderOperation("GCS object deletion failed", async () =>
+			this.bucket.file(path_object).delete({
+				preconditionOpts: { ifGenerationMatch: generation },
+			}));
 	}
 
 	public async listObjects(prefix_object: string): Promise<DestinationObject[]> {
-		const [files_object] = await this.bucket.getFiles({ prefix: prefix_object });
+		const [files_object] = await runProviderOperation(
+			"GCS object listing failed",
+			async () => this.bucket.getFiles({ prefix: prefix_object }),
+		);
 		return Promise.all(files_object.map((file_object) => this.getFileMetadata(file_object)));
 	}
 
@@ -130,7 +150,10 @@ export class GcsDestination implements BackupDestination {
 	}
 
 	private async getFileMetadata(file_object: GcsFileLike): Promise<DestinationObject> {
-		const [metadata_gcs] = await file_object.getMetadata();
+		const [metadata_gcs] = await runProviderOperation(
+			"GCS object metadata failed",
+			async () => file_object.getMetadata(),
+		);
 		return normalizeMetadata(metadata_gcs);
 	}
 }

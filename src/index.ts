@@ -1,4 +1,5 @@
 import { CliError, createProgram } from "./cli.js";
+import { redactError } from "./logging/redact.js";
 
 async function runCli(): Promise<void> {
 	try {
@@ -10,7 +11,9 @@ async function runCli(): Promise<void> {
 			return;
 		}
 
-		throw error;
+		const error_redacted = redactError(error);
+		process.stderr.write(`RUNTIME_ERROR: ${error_redacted.message}\n`);
+		process.exitCode = 1;
 	}
 }
 

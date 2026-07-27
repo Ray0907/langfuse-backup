@@ -14,7 +14,7 @@ export interface RestoreArtifactEvidence {
 
 export interface RestorePlanOptions {
 	manifest: RecoveryManifest;
-	source_langfuse_version: string;
+	source_langfuse_version?: string;
 	target: RestoreTarget;
 	artifacts: RestoreArtifactEvidence;
 	accept_online_consistency?: boolean;
@@ -105,6 +105,11 @@ function createActions(): RestoreAction[] {
 
 export function createRestorePlan(options: RestorePlanOptions): RestorePlan {
 	const { manifest } = options;
+	const source_langfuse_version = manifest.langfuse_version
+		?? options.source_langfuse_version;
+	if (source_langfuse_version === undefined) {
+		throw new Error("Manifest does not record a Langfuse version");
+	}
 	if (manifest.consistency.mode === "online"
 		&& options.accept_online_consistency !== true) {
 		throw new Error(
@@ -115,7 +120,7 @@ export function createRestorePlan(options: RestorePlanOptions): RestorePlan {
 		source_deployment_id: manifest.deployment_id,
 		target: options.target,
 		source_versions: {
-			langfuse_version: options.source_langfuse_version,
+			langfuse_version: source_langfuse_version,
 			postgres_version: manifest.components.postgres.server_version,
 			clickhouse_version: manifest.components.clickhouse.server_version,
 		},

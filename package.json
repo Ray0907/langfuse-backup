@@ -2,6 +2,23 @@
 	"name": "langfuse-backup",
 	"version": "0.1.0",
 	"description": "Standalone backup and restore CLI for self-hosted Langfuse",
+	"keywords": [
+		"langfuse",
+		"backup",
+		"restore",
+		"disaster-recovery",
+		"clickhouse",
+		"postgresql"
+	],
+	"author": "Ray Tien <ray.tien0907@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Ray0907/langfuse-backup.git"
+	},
+	"homepage": "https://github.com/Ray0907/langfuse-backup#readme",
+	"bugs": {
+		"url": "https://github.com/Ray0907/langfuse-backup/issues"
+	},
 	"type": "module",
 	"license": "MIT",
 	"private": false,
@@ -10,8 +27,12 @@
 	},
 	"files": [
 		"dist",
+		"docs",
+		"examples",
+		"CHANGELOG.md",
 		"LICENSE",
-		"README.md"
+		"README.md",
+		"SECURITY.md"
 	],
 	"scripts": {
 		"build": "tsup",
@@ -19,7 +40,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
-		"verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+		"verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+		"verify:artifact": "node scripts/verify-artifact.mjs"
 	},
 	"engines": {
 		"node": ">=24"
@@ -29,18 +51,22 @@
 		"@aws-sdk/client-s3": "3.1093.0",
 		"@google-cloud/storage": "7.21.0",
 		"bullmq": "5.80.12",
-		"commander": "^15.0.0",
-		"yaml": "^2.9.0",
-		"zod": "^4.4.3"
+		"commander": "15.0.0",
+		"yaml": "2.9.0",
+		"zod": "4.4.3"
 	},
 	"devDependencies": {
-		"@eslint/js": "^10.0.1",
-		"@types/node": "^24.13.3",
-		"eslint": "^10.7.0",
-		"globals": "^17.7.0",
-		"tsup": "^8.5.1",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.65.0",
-		"vitest": "^4.1.10"
+		"@eslint/js": "10.0.1",
+		"@types/node": "24.13.3",
+		"eslint": "10.7.0",
+		"globals": "17.7.0",
+		"tsup": "8.5.1",
+		"typescript": "5.9.3",
+		"typescript-eslint": "8.65.0",
+		"vitest": "4.1.10"
+	},
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
 	}
 }

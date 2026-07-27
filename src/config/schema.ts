@@ -18,6 +18,7 @@ const HookSchema = z.object({
 
 const ConfigSchemaInternal = z.object({
 	deployment_id: IdentifierSchema,
+	langfuse_version: z.string().trim().min(1),
 	consistency: z.object({
 		mode: z.enum(["coordinated", "online"]).default("coordinated"),
 		pre_hook: HookSchema.optional(),
@@ -39,6 +40,8 @@ const ConfigSchemaInternal = z.object({
 		endpoint: z.string().url(),
 		database: IdentifierSchema.default("default"),
 		named_collection: IdentifierSchema.optional(),
+		username: SecretReferenceSchema.optional(),
+		password: SecretReferenceSchema.optional(),
 		hmac_access_key: SecretReferenceSchema.optional(),
 		hmac_secret_key: SecretReferenceSchema.optional(),
 	}).strict().refine(
@@ -57,6 +60,7 @@ const ConfigSchemaInternal = z.object({
 			bucket: z.string().trim().min(1),
 			prefixes: z.array(z.string().trim().min(1)).default(["events/", "media/"]),
 			immutable_bucket: z.boolean().default(false),
+			credentials: SecretReferenceSchema.optional(),
 		}).strict(),
 		z.object({
 			provider: z.literal("s3"),
@@ -72,3 +76,4 @@ const ConfigSchemaInternal = z.object({
 
 export const ConfigSchema = ConfigSchemaInternal.readonly();
 export type BackupConfig = z.infer<typeof ConfigSchema>;
+export type SecretReference = z.infer<typeof SecretReferenceSchema>;

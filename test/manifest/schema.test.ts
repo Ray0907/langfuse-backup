@@ -56,6 +56,7 @@ describe("manifest schema version 1", () => {
 			tool: manifest_valid.tool,
 			committed_at: manifest_valid.committed_at,
 			created_at: manifest_valid.created_at,
+			langfuse_version: manifest_valid.langfuse_version,
 			deployment_id: manifest_valid.deployment_id,
 			backup_id: manifest_valid.backup_id,
 			schema_version: manifest_valid.schema_version,

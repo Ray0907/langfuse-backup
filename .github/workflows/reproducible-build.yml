@@ -1,0 +1,68 @@
+name: Reproducible build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24.4.1"
+          cache: pnpm
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify source package
+        run: pnpm verify
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+      - name: Pack npm artifact twice
+        run: |
+          path_first="$(mktemp -d)"
+          path_second="$(mktemp -d)"
+          pnpm pack --pack-destination "${path_first}"
+          pnpm pack --pack-destination "${path_second}"
+          test "$(sha256sum "${path_first}"/*.tgz | cut -d' ' -f1)" = \
+            "$(sha256sum "${path_second}"/*.tgz | cut -d' ' -f1)"
+      - name: Build first OCI image
+        run: |
+          time_source="$(git show -s --format=%ct "${GITHUB_SHA}")"
+          docker build --no-cache --provenance=false \
+            --build-arg SOURCE_DATE_EPOCH="${time_source}" \
+            --build-arg SOURCE_REVISION="${GITHUB_SHA}" \
+            --build-arg TOOL_VERSION="$(node -p 'require("./package.json").version')" \
+            --tag langfuse-backup:first .
+      - name: Verify metadata and generate SPDX
+        run: pnpm verify:artifact
+        env:
+          ARTIFACT_IMAGE: langfuse-backup:first
+          SOURCE_REVISION: ${{ github.sha }}
+      - name: Rebuild OCI image independently
+        run: |
+          time_source="$(git show -s --format=%ct "${GITHUB_SHA}")"
+          docker build --no-cache --provenance=false \
+            --build-arg SOURCE_DATE_EPOCH="${time_source}" \
+            --build-arg SOURCE_REVISION="${GITHUB_SHA}" \
+            --build-arg TOOL_VERSION="$(node -p 'require("./package.json").version')" \
+            --tag langfuse-backup:second .
+          test "$(docker image inspect langfuse-backup:first --format '{{.Id}}')" = \
+            "$(docker image inspect langfuse-backup:second --format '{{.Id}}')"
+      - name: Upload SPDX
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: langfuse-backup-spdx
+          path: .artifacts/*.spdx.json
+          if-no-files-found: error
