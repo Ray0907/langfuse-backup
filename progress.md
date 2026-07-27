@@ -4,7 +4,7 @@ Last updated: 2026-07-27
 
 ## Current State
 
-Status: Release-candidate source complete; public repository pending
+Status: Public repository published; source release candidate verified
 
 The repository now has a tested backup and restore CLI, validated configuration
 contracts, centralized redaction, a reproducible non-root OCI image, PostgreSQL 17
@@ -18,7 +18,7 @@ clients, pinned continuous-integration gates, and public-ready documentation.
 | M1 Backup foundation | Complete | 51 tests and `pnpm verify` pass |
 | M2 Coordinated recovery point | Complete | 74 tests and `pnpm verify` pass |
 | M3 Restore validation | Complete | 113 tests plus isolated recovery E2E pass |
-| M4 OSS release automation | Complete | 135 tests, reproducible artifacts and docs |
+| M4 OSS release automation | Complete | 139 tests, reproducible artifacts and docs |
 
 ## Decisions
 
@@ -42,9 +42,8 @@ clients, pinned continuous-integration gates, and public-ready documentation.
 
 ## Next Actions
 
-1. Push the verified source to the public GitHub repository.
-2. Confirm the first hosted CI and reproducibility workflows.
-3. Do not create a release tag until the protected release environment and trusted
+1. Require hosted CI and reproducibility checks for changes to `main`.
+2. Do not create a release tag until the protected release environment and trusted
    publishing identities are configured.
 
 ## Loop Run

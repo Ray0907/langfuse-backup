@@ -26,6 +26,26 @@ function collectUses(value_node: unknown): string[] {
 	];
 }
 
+interface WorkflowStep {
+	run?: string;
+	uses?: string;
+	with?: Record<string, unknown>;
+}
+
+function collectWorkflowSteps(value_workflow: unknown): WorkflowStep[][] {
+	if (value_workflow === null || typeof value_workflow !== "object") {
+		return [];
+	}
+	const jobs_workflow = (value_workflow as {
+		jobs?: Record<string, { steps?: WorkflowStep[] }>;
+	}).jobs;
+	if (jobs_workflow === undefined) {
+		return [];
+	}
+	return Object.values(jobs_workflow)
+		.map((job_workflow) => job_workflow.steps ?? []);
+}
+
 describe("public repository release metadata", () => {
 	it.each(paths_workflow)("parses %s and pins every action to a commit", async (path_file) => {
 		const workflow = parse(
@@ -38,6 +58,29 @@ describe("public repository release metadata", () => {
 			expect(action_used).toMatch(/^[^@\s]+@[a-f0-9]{40}$/);
 		}
 	});
+
+	it.each(paths_workflow)(
+		"makes pnpm available before setup-node caching in %s",
+		async (path_file) => {
+			const workflow = parse(
+				await readFile(resolve(path_root, path_file), "utf8"),
+			) as unknown;
+
+			for (const steps_workflow of collectWorkflowSteps(workflow)) {
+				const index_node = steps_workflow.findIndex((step_workflow) =>
+					step_workflow.uses?.startsWith("actions/setup-node@")
+					&& step_workflow.with?.cache === "pnpm");
+				if (index_node < 0) {
+					continue;
+				}
+				const steps_before = steps_workflow.slice(0, index_node);
+				expect(steps_before.some((step_workflow) =>
+					step_workflow.run?.includes("corepack enable")
+					|| step_workflow.uses?.startsWith("pnpm/action-setup@"),
+				)).toBe(true);
+			}
+		},
+	);
 
 	it("keeps protected release gates ahead of publishing", async () => {
 		const text_release = await readFile(
